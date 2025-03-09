@@ -188,7 +188,7 @@ def make_testdata():
         "ほうじ茶", "玄米茶", "ジャスミン茶", "ウーロン茶", "紅茶", "緑茶", "麦茶", "ハーブティー", "ミルクティー", "チャイ"
     ]
     drinks = [ "コーヒー", "紅茶", "緑茶", "ウーロン茶", "オレンジジュース", "炭酸水", "牛乳", "豆乳" ]
-    residences = [ "新宿区", "渋谷区", "中央区", "台東区", "墨田区" ]
+    residences = [ "門前仲町駅", "晴海駅", "飯田橋駅", "早稲田駅", "東京駅" ]
     workplaces = residences.copy()
     num_people = 250
     responses = []
@@ -197,7 +197,8 @@ def make_testdata():
         fav_drink = " ".join(random.sample(drinks, 3))
         residence = random.choice(residences)
         workplace = random.choice(workplaces)
-        response = f"{fav_food}"
+        #response = f"{fav_food}"
+        response = f"{fav_food} {residence}"
         #response = f"{fav_food} {fav_drink} {residence} {workplace}"
         responses.append(response)
     client = boto3.client("bedrock-runtime", region_name="us-east-2")
