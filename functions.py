@@ -190,7 +190,7 @@ def make_testdata():
     drinks = [ "コーヒー", "紅茶", "緑茶", "ウーロン茶", "オレンジジュース", "炭酸水", "牛乳", "豆乳" ]
     residences = [ "門前仲町駅", "晴海駅", "飯田橋駅", "早稲田駅", "東京駅" ]
     workplaces = residences.copy()
-    num_people = 250
+    num_people = 2000
     responses = []
     for _ in range(num_people):
         fav_food = " ".join(random.sample(food_items, 2))
