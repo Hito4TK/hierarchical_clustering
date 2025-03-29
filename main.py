@@ -13,6 +13,7 @@ from functions import sample_cluster_name
 from functions import call_restaurant_tool
 from functions import recommend_restaurant_for_cluster
 from functions import sample_restaurant_recommendation
+from functions import cluster_cohesion_stats_by_cluster
 
 # -------------------------------
 # メイン処理
@@ -70,9 +71,22 @@ if __name__ == "__main__":
 
         # クラスタごとのデータを格納
         counts = Counter(adjusted_labels)
-        print("最終的なクラスタサイズ:")
+
+        # クラスタごとのコサイン類似度統計量を計算
+        embeddings_np = np.array(embeddings)  # 必要に応じて np.array に変換
+        cohesion_stats_by_cluster = cluster_cohesion_stats_by_cluster(embeddings_np, adjusted_labels)
+
+        print("最終的なクラスタサイズとコサイン類似度の統計量:")
         for lab, cnt in sorted(counts.items(), key=lambda x: x[1], reverse=True):
+            stats = cohesion_stats_by_cluster.get(lab, {})
             print(f"  クラスタ {lab}: {cnt} サンプル")
+            print(f"    平均: {stats['mean']:.4f}, 標準偏差: {stats['std']:.4f}, 分散: {stats['var']:.4f}, "
+                  f"最大値: {stats['max']:.4f}, 最小値: {stats['min']:.4f}, 中央値: {stats['median']:.4f}")
+
+
+        #print("最終的なクラスタサイズ:")
+        #for lab, cnt in sorted(counts.items(), key=lambda x: x[1], reverse=True):
+        #    print(f"  クラスタ {lab}: {cnt} サンプル")
 
         clusters = {}
         for i, label in enumerate(adjusted_labels):

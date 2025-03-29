@@ -190,7 +190,7 @@ def make_testdata():
     drinks = [ "コーヒー", "紅茶", "緑茶", "ウーロン茶", "オレンジジュース", "炭酸水", "牛乳", "豆乳" ]
     residences = [ "門前仲町駅", "晴海駅", "飯田橋駅", "早稲田駅", "東京駅" ]
     workplaces = residences.copy()
-    num_people = 2000
+    num_people = 10
     responses = []
     for _ in range(num_people):
         fav_food = " ".join(random.sample(food_items, 2))
@@ -404,5 +404,43 @@ def sample_restaurant_recommendation(clusters):
         recommendation = recommend_restaurant_for_cluster(items)
         restaurant_recommendations[cluster_id] = recommendation
     return restaurant_recommendations
+
+
+# -------------------------------
+# クラスタごとの類似度統計量を計算する関数
+# -------------------------------
+def cluster_cohesion_stats_by_cluster(embeddings, labels):
+    unique_labels = np.unique(labels)
+    cluster_stats = {}
+    
+    for label in unique_labels:
+        cluster_points = embeddings[labels == label]
+        if len(cluster_points) > 1:
+            similarities = cosine_similarity(cluster_points)
+            avg_similarity = np.mean(similarities[np.triu_indices(len(cluster_points), k=1)])
+            
+            stats = {
+                'mean': avg_similarity,
+                'std': np.std(similarities[np.triu_indices(len(cluster_points), k=1)]),
+                'var': np.var(similarities[np.triu_indices(len(cluster_points), k=1)]),
+                'max': np.max(similarities[np.triu_indices(len(cluster_points), k=1)]),
+                'min': np.min(similarities[np.triu_indices(len(cluster_points), k=1)]),
+                'median': np.median(similarities[np.triu_indices(len(cluster_points), k=1)]),
+            }
+        else:
+            # クラスタ内に1つしかない場合は類似度を計算できない
+            stats = {
+                'mean': 0,
+                'std': 0,
+                'var': 0,
+                'max': 0,
+                'min': 0,
+                'median': 0,
+            }
+        
+        cluster_stats[label] = stats
+    
+    return cluster_stats
+
 
 # %%

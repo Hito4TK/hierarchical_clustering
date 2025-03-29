@@ -2,6 +2,7 @@ hierarchical_clustering.code-workspace
 *.pkl
 .DS_Store
 old*
+test.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
