@@ -407,29 +407,36 @@ def sample_restaurant_recommendation(clusters):
 
 
 # -------------------------------
-# クラスタごとの類似度統計量を計算する関数
+# クラスタごとのサンプル数の集計と、類似度統計量を計算する関数
 # -------------------------------
 def cluster_cohesion_stats_by_cluster(embeddings, labels):
     unique_labels = np.unique(labels)
     cluster_stats = {}
     
     for label in unique_labels:
+        # クラスタ内のポイントを取得
         cluster_points = embeddings[labels == label]
-        if len(cluster_points) > 1:
+        n_samples = len(cluster_points)
+
+        # サンプル数が1以下の場合は初期値をセット
+        if n_samples > 1:
             similarities = cosine_similarity(cluster_points)
-            avg_similarity = np.mean(similarities[np.triu_indices(len(cluster_points), k=1)])
+            upper_indices = np.triu_indices(n_samples, k=1)
+            similarity_values = similarities[upper_indices]
             
             stats = {
-                'mean': avg_similarity,
-                'std': np.std(similarities[np.triu_indices(len(cluster_points), k=1)]),
-                'var': np.var(similarities[np.triu_indices(len(cluster_points), k=1)]),
-                'max': np.max(similarities[np.triu_indices(len(cluster_points), k=1)]),
-                'min': np.min(similarities[np.triu_indices(len(cluster_points), k=1)]),
-                'median': np.median(similarities[np.triu_indices(len(cluster_points), k=1)]),
+                'count': n_samples,  # サンプル数の追加
+                'mean': np.mean(similarity_values),
+                'std': np.std(similarity_values),
+                'var': np.var(similarity_values),
+                'max': np.max(similarity_values),
+                'min': np.min(similarity_values),
+                'median': np.median(similarity_values),
             }
         else:
-            # クラスタ内に1つしかない場合は類似度を計算できない
+            # サンプルが1つ以下の場合、類似度計算は不要
             stats = {
+                'count': n_samples,  # サンプル数のみ
                 'mean': 0,
                 'std': 0,
                 'var': 0,
@@ -438,6 +445,7 @@ def cluster_cohesion_stats_by_cluster(embeddings, labels):
                 'median': 0,
             }
         
+        # クラスタごとの統計量を保存
         cluster_stats[label] = stats
     
     return cluster_stats
