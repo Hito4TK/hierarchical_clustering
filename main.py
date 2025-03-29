@@ -1,5 +1,6 @@
 #%%
 import numpy as np
+import pandas as pd
 from collections import Counter
 import sys
 from functions import fetch_restaurant_info
@@ -73,12 +74,38 @@ if __name__ == "__main__":
         embeddings_np = np.array(embeddings)  # 必要に応じて np.array に変換
         cohesion_stats_by_cluster = cluster_cohesion_stats_by_cluster(embeddings_np, adjusted_labels)
 
-        # クラスタサイズとコサイン類似度の統計量を表示
-        print("最終的なクラスタサイズとコサイン類似度の統計量:")
+        # クラスタデータを格納するリスト
+        cluster_data = []
+
+        # クラスタサイズとコサイン類似度の統計量を表示、保存
+        print("最終的なクラスタサイズとコサイン類似度の統計量、データフレームへの格納:")
         for lab, stats in sorted(cohesion_stats_by_cluster.items(), key=lambda x: x[1]['count'], reverse=True):
             print(f"  クラスタ {lab}: {stats['count']} サンプル")
             print(f"    平均: {stats['mean']:.4f}, 標準偏差: {stats['std']:.4f}, 分散: {stats['var']:.4f}, "
                 f"最大値: {stats['max']:.4f}, 最小値: {stats['min']:.4f}, 中央値: {stats['median']:.4f}")
+
+            
+            # DataFrame に格納するための辞書を作成
+            cluster_data.append({
+                'cluster_id': lab,
+                'count': stats['count'],
+                'mean': stats['mean'],
+                'std': stats['std'],
+                'var': stats['var'],
+                'max': stats['max'],
+                'min': stats['min'],
+                'median': stats['median']
+            })
+
+        # リストから DataFrame を作成
+        cluster_df = pd.DataFrame(cluster_data)
+
+        # DataFrame を pkl 形式で保存
+        cluster_df.to_pickle('cluster_stats.pkl')
+        print(cluster_df.head())
+
+        # 保存完了の確認
+        print("\nクラスタ統計情報が 'cluster_stats.pkl' に保存されました。")
 
 
         clusters = {}
@@ -92,7 +119,7 @@ if __name__ == "__main__":
             for member_id, response in members:
                 print(f"  ID {member_id}: {response}")
 
-        
+        '''
         cluster_name_suggestions = sample_cluster_name(clusters)
         restaurant_recommendations = sample_restaurant_recommendation(clusters)
         for label, items in clusters.items():
@@ -101,7 +128,7 @@ if __name__ == "__main__":
             print(f"\nクラスタ {label} ({len(items)} 件) - 提案名称: {cluster_name} / 飲食店提案: {restaurant_rec}")
             for person_id, response in items:
                 print(f"  ID {person_id}: {response}")
-        
+        '''
     sys.stdout = sys.__stdout__
 
 print("処理が完了しました。")
