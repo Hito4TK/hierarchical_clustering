@@ -176,23 +176,7 @@ def make_testdata():
 
     # 食べ物、飲み物、駅の候補リスト
     food_items = [
-        "寿司", "ラーメン", "うどん", "そば", "焼肉", "カレー", "ピザ", "パスタ", "ハンバーガー", "餃子", 
-        "唐揚げ", "刺身", "天ぷら", "しゃぶしゃぶ", "すき焼き", "ステーキ", "オムライス", "ドーナツ", "ケーキ", "チョコレート", 
-        "アイスクリーム", "フルーツタルト", "パンケーキ", "タピオカ", "ナポリタン", "カルボナーラ", "エビフライ", "カツ丼", "親子丼", "ビーフシチュー", 
-        "焼き鳥", "フォー", "バインミー", "キムチ", "チーズ", "ホットドッグ", "サンドイッチ", "クレープ", "抹茶スイーツ", "杏仁豆腐", 
-        "パフェ", "たこ焼き", "お好み焼き", "もんじゃ焼き", "牛丼", "天丼", "ミートソース", "グラタン", "ドリア", "シチュー", 
-        "コロッケ", "春巻き", "チャーハン", "中華まん", "麻婆豆腐", "青椒肉絲", "北京ダック", "担々麺", "冷麺", "キンパ", 
-        "サムギョプサル", "ビビンバ", "トッポギ", "カオマンガイ", "ガパオライス", "トムヤムクン", "ナシゴレン", "サテ", "バターチキンカレー", "タンドリーチキン", 
-        "ナン", "チキンティッカ", "ケバブ", "フムス", "ファラフェル", "シュクシュカ", "ボルシチ", "ピロシキ", "ラタトゥイユ", "カプレーゼ", 
-        "リゾット", "ペスカトーレ", "ジェノベーゼ", "ガーリックシュリンプ", "ローストビーフ", "ローストチキン", "スペアリブ", "フィッシュアンドチップス", "バーベキュー", "ミートパイ", 
-        "ビスケット", "パンナコッタ", "ティラミス", "マカロン", "エクレア", "プリン", "バウムクーヘン", "ショートケーキ", "ミルフィーユ", "モンブラン", 
-        "アップルパイ", "スイートポテト", "クッキー", "チュロス", "ゼリー", "たい焼き", "どら焼き", "わらび餅", "みたらし団子", "大福", 
-        "羊羹", "かき氷", "クリームソーダ", "レモネード", "ココア", "抹茶ラテ", "カフェラテ", "エスプレッソ", "フルーツジュース", "スムージー",
-        "コーンポタージュ", "ミネストローネ", "オニオンスープ", "ガスパチョ", "ブイヤベース", "ハヤシライス", "ロコモコ", "チリコンカン", "ジャンバラヤ", "パエリア", 
-        "ソーセージ", "ハム", "ベーコン", "ロースハム", "生ハム", "スモークサーモン", "エビチリ", "フカヒレスープ", "ショウロンポウ", "チャーシュー",
-        "焼きそば", "焼きうどん", "カレーうどん", "皿うどん", "タコライス", "ゴーヤチャンプルー", "サーターアンダギー", "沖縄そば", "シークワーサージュース", "マンゴープリン",
-        "ヨーグルト", "シリアル", "グラノーラ", "バター", "ジャム", "はちみつ", "あんこ", "きなこ", "黒蜜", "豆乳",
-        "ほうじ茶", "玄米茶", "ジャスミン茶", "ウーロン茶", "紅茶", "緑茶", "麦茶", "ハーブティー", "ミルクティー", "チャイ"
+        "寿司", "ラーメン", "うどん", "そば", "焼肉"
     ]
     drinks = [ "コーヒー", "紅茶", "緑茶", "ウーロン茶", "オレンジジュース", "炭酸水", "牛乳", "豆乳" ]
     residences = [ "門前仲町駅", "晴海駅", "飯田橋駅", "早稲田駅", "東京駅" ]
@@ -465,20 +449,28 @@ def call_restaurant_tool(query, model_id="anthropic.claude-3-5-sonnet-20240620-v
             return "最終回答が見つかりませんでした。"
 
 def recommend_restaurant_for_cluster(cluster_items):
-    sample_items = random.sample(cluster_items, min(3, len(cluster_items)))
+    # 全クラスタのデータを対象にする
     food_candidates = []
-    for _, response in sample_items:
-        tokens = response.split()
-        if len(tokens) >= 8:
-            food_candidates.extend(tokens[0:3])
+    location_candidates = []
+
+    for _, response in cluster_items:
+        lines = response.split(" ")
+        for i in range(len(lines) - 1):
+            # 食べ物の質問に対する回答
+            if "好きな食べ物は何ですか？" in lines[i]:
+                food_answers = lines[i + 1].split()
+                food_candidates.extend(food_answers)
+            
+            # 住んでいる場所の質問に対する回答
+            elif "住んでいる場所はどこですか？" in lines[i]:
+                location_answers = lines[i + 1].split()
+                location_candidates.extend(location_answers)
+
+    # 食べ物候補の頻度カウント（すべての回答を考慮）
     food_counts = Counter(food_candidates)
     food_keyword = food_counts.most_common(1)[0][0] if food_counts else "料理"
-    location_candidates = []
-    for _, response in cluster_items:
-        tokens = response.split()
-        if len(tokens) >= 8:
-            location_candidates.append(tokens[6])
-            location_candidates.append(tokens[7])
+
+    # 場所候補の頻度カウント（すべての回答を考慮）
     location_counts = Counter(location_candidates)
     location_keyword = location_counts.most_common(1)[0][0] if location_counts else "東京"
 
@@ -488,6 +480,7 @@ def recommend_restaurant_for_cluster(cluster_items):
     time.sleep(wait_time)
 
     query = f"{location_keyword}でおすすめの{food_keyword}屋を教えてください。"
+    print(query)
     recommendation = call_restaurant_tool(query)
     return recommendation
 
