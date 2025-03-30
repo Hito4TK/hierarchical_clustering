@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import Counter
+from collections import defaultdict
 from math import ceil
 import random
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -158,16 +159,22 @@ def split_embeddings(embeddings, min_chunk_size=50, max_chunk_size=200):
     
     return chunks
 
+
 def make_testdata():
     filename = "testdata_food.pkl"
+
+    # すでにデータがある場合は読み込み
     if os.path.exists(filename):
         with open(filename, "rb") as f:
             data = pickle.load(f)
         data["embeddings"] = np.array(data["embeddings"])
         return data["embeddings"], data["responses"]
 
+    # 乱数シードの固定（再現性確保）
     np.random.seed(42)
     random.seed(42)
+
+    # 食べ物、飲み物、駅の候補リスト
     food_items = [
         "寿司", "ラーメン", "うどん", "そば", "焼肉", "カレー", "ピザ", "パスタ", "ハンバーガー", "餃子", 
         "唐揚げ", "刺身", "天ぷら", "しゃぶしゃぶ", "すき焼き", "ステーキ", "オムライス", "ドーナツ", "ケーキ", "チョコレート", 
@@ -190,30 +197,80 @@ def make_testdata():
     drinks = [ "コーヒー", "紅茶", "緑茶", "ウーロン茶", "オレンジジュース", "炭酸水", "牛乳", "豆乳" ]
     residences = [ "門前仲町駅", "晴海駅", "飯田橋駅", "早稲田駅", "東京駅" ]
     workplaces = residences.copy()
+
+    # 質問リスト
+    questions = [
+        "好きな食べ物は何ですか？",
+        "好きな飲み物は何ですか？",
+        "住んでいる場所はどこですか？",
+        "働いている場所はどこですか？"
+    ]
+
+    # データ生成数
     num_people = 10
     responses = []
-    for _ in range(num_people):
+
+    # 各人の回答を生成
+    for i in range(num_people):
         fav_food = " ".join(random.sample(food_items, 2))
-        fav_drink = " ".join(random.sample(drinks, 3))
+        fav_drink = " ".join(random.sample(drinks, 2))
         residence = random.choice(residences)
         workplace = random.choice(workplaces)
-        #response = f"{fav_food}"
-        response = f"{fav_food} {residence}"
-        #response = f"{fav_food} {fav_drink} {residence} {workplace}"
-        responses.append(response)
+
+        # 質問ごとの回答を辞書形式で格納
+        person_responses = [
+            {"person_id": i, "question": questions[0], "response": fav_food},
+            {"person_id": i, "question": questions[1], "response": fav_drink},
+            {"person_id": i, "question": questions[2], "response": residence},
+            {"person_id": i, "question": questions[3], "response": workplace}
+        ]
+
+        # 全回答をresponsesに追加
+        responses.extend(person_responses)
+
+    # 必要な質問だけ選択する
+    selected_questions = [
+        "好きな食べ物は何ですか？",
+        "住んでいる場所はどこですか？"
+    ]
+
+    # person_id ごとに必要な回答だけをまとめる
+    person_responses_dict = defaultdict(list)
+    for item in responses:
+        if item["question"] in selected_questions:
+            combined_text = f"{item['question']} {item['response']}"
+            person_responses_dict[item["person_id"]].append(combined_text)
+
+    # Bedrockクライアントの作成
     client = boto3.client("bedrock-runtime", region_name="ap-northeast-1")
     model_id = "amazon.titan-embed-text-v2:0"
+
+    # 同じ人の回答をまとめて埋め込み対象に
     embeddings = []
-    for text in responses:
-        native_request = {"inputText": text}
+    grouped_responses = []
+    for person_id, texts in person_responses_dict.items():
+        combined_text = " ".join(texts)
+        
+        # Bedrockへのリクエスト
+        native_request = {"inputText": combined_text}
         response_boto = client.invoke_model(modelId=model_id, body=json.dumps(native_request))
-        result = json.loads(response_boto['body'].read())
-        embedding = result['embedding']
+        result = json.loads(response_boto["body"].read())
+
+        # 埋め込みデータ取得
+        embedding = result["embedding"]
         embeddings.append(embedding)
+
+        # まとめた回答（combined_text）のみを保存
+        grouped_responses.append(combined_text)
+
+    # 埋め込みデータをNumPy配列に変換
     embeddings = np.array(embeddings)
+
+    # データを pickle に保存
     with open("testdata_food.pkl", "wb") as f:
-        pickle.dump({"embeddings": embeddings, "responses": responses}, f)
-    return embeddings, responses
+        pickle.dump({"embeddings": embeddings, "responses": grouped_responses}, f)
+
+    return embeddings, grouped_responses
 
 def query_claude(prompt, model_id="anthropic.claude-3-5-sonnet-20240620-v1:0", max_retries=5):
     client = boto3.client("bedrock-runtime", region_name="ap-northeast-1")
