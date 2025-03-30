@@ -201,7 +201,7 @@ def make_testdata():
         response = f"{fav_food} {residence}"
         #response = f"{fav_food} {fav_drink} {residence} {workplace}"
         responses.append(response)
-    client = boto3.client("bedrock-runtime", region_name="us-east-2")
+    client = boto3.client("bedrock-runtime", region_name="ap-northeast-1")
     model_id = "amazon.titan-embed-text-v2:0"
     embeddings = []
     for text in responses:
@@ -215,39 +215,62 @@ def make_testdata():
         pickle.dump({"embeddings": embeddings, "responses": responses}, f)
     return embeddings, responses
 
-def query_claude(prompt, model_id="us.anthropic.claude-3-5-haiku-20241022-v1:0"):
-    client = boto3.client("bedrock-runtime", region_name="us-east-2")
+def query_claude(prompt, model_id="anthropic.claude-3-5-sonnet-20240620-v1:0", max_retries=5):
+    client = boto3.client("bedrock-runtime", region_name="ap-northeast-1")
+    
     messages = [
         {
             "role": "user",
             "content": [{"text": prompt}]
         }
     ]
+    
     inference_config = {"maxTokens": 200, "temperature": 0}
-    try:
-        response = client.converse(
-            modelId=model_id,
-            messages=messages,
-            inferenceConfig=inference_config
-        )
-        if isinstance(response, dict) and "body" in response:
-            result = json.loads(response['body'].read())
-        else:
-            result = response
-        output = result.get("output", {})
-        message = output.get("message", {})
-        content_list = message.get("content", [])
-        text = " ".join([item.get("text", "") for item in content_list])
-        return text.strip()
-    except Exception as e:
-        print("エラーが発生しました:", e)
-        return None
+    
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = client.converse(
+                modelId=model_id,
+                messages=messages,
+                inferenceConfig=inference_config
+            )
+            
+            # レスポンスが辞書形式かどうか確認
+            if isinstance(response, dict) and "body" in response:
+                result = json.loads(response['body'].read())
+            else:
+                result = response
+            
+            output = result.get("output", {})
+            message = output.get("message", {})
+            content_list = message.get("content", [])
+            text = " ".join([item.get("text", "") for item in content_list])
+            return text.strip()
+        
+        except client.exceptions.ThrottlingException:
+            # Throttling時の待機時間を指数関数的に増やす
+            wait_time = 2 ** retries + random.uniform(0, 1)
+            print(f"リクエスト制限超過。{wait_time:.2f}秒待機して再試行します...")
+            time.sleep(wait_time)
+            retries += 1
+        
+        except Exception as e:
+            print("エラーが発生しました:", e)
+            return None
+
+    print("最大リトライ回数に達しました。リクエスト失敗。")
+    return None
 
 def sample_cluster_name(clusters):
     cluster_names = {}
+    
     for cluster_id, items in clusters.items():
+        # クラスタ内の回答からランダムに3つサンプル
         sample_items = random.sample(items, min(3, len(items)))
         sample_texts = [response for _, response in sample_items]
+        
+        # プロンプト生成
         prompt = (
             f"以下は、あるクラスタに属する3人の回答です。\n"
             f"1. {sample_texts[0]}\n"
@@ -256,11 +279,18 @@ def sample_cluster_name(clusters):
             f"これらの回答内容から、このクラスタを表す適切な名称を日本語で提案してください。\n"
             f"考えた名称のみを回答してください。他の情報は不要です。"
         )
+        
+        # Claude へのリクエスト
         response_text = query_claude(prompt)
+        
         if response_text:
             cluster_names[cluster_id] = response_text
         else:
             cluster_names[cluster_id] = "エラー"
+
+        # APIリクエストの頻度を抑制（1〜2秒の間隔）
+        time.sleep(random.uniform(1, 2))
+    
     return cluster_names
 
 # -------------------------------
@@ -283,8 +313,8 @@ tools = [
 
 import time  # 待機用
 
-def call_restaurant_tool(query, model_id="us.anthropic.claude-3-haiku-20240307-v1:0"):
-    client = boto3.client('bedrock-runtime', region_name='us-east-2')
+def call_restaurant_tool(query, model_id="anthropic.claude-3-5-sonnet-20240620-v1:0"):
+    client = boto3.client('bedrock-runtime', region_name='ap-northeast-1')
     initial_payload = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 512,
