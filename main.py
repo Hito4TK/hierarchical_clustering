@@ -121,12 +121,12 @@ if __name__ == "__main__":
 
         
         cluster_name_suggestions = sample_cluster_name(clusters)
-        #restaurant_recommendations = sample_restaurant_recommendation(clusters)
+        restaurant_recommendations = sample_restaurant_recommendation(clusters)
         for label, items in clusters.items():
             cluster_name = cluster_name_suggestions.get(label, "名称なし")
-            #restaurant_rec = restaurant_recommendations.get(label, "飲食店情報なし")
-            #print(f"\nクラスタ {label} ({len(items)} 件) - 提案名称: {cluster_name} / 飲食店提案: {restaurant_rec}")
-            print(f"\nクラスタ {label} ({len(items)} 件) - 提案名称: {cluster_name} ")
+            restaurant_rec = restaurant_recommendations.get(label, "飲食店情報なし")
+            print(f"\nクラスタ {label} ({len(items)} 件) - 提案名称: {cluster_name} / 飲食店提案: {restaurant_rec}")
+            #print(f"\nクラスタ {label} ({len(items)} 件) - 提案名称: {cluster_name} ")
             for person_id, response in items:
                 print(f"  ID {person_id}: {response}")
         

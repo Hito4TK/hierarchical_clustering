@@ -481,6 +481,12 @@ def recommend_restaurant_for_cluster(cluster_items):
             location_candidates.append(tokens[7])
     location_counts = Counter(location_candidates)
     location_keyword = location_counts.most_common(1)[0][0] if location_counts else "東京"
+
+    # APIリクエストの前にランダム待機時間を追加（0.5〜2.0秒）
+    wait_time = random.uniform(0.5, 2.0)
+    print(f"APIリクエストの前に {wait_time:.2f} 秒待機...")
+    time.sleep(wait_time)
+
     query = f"{location_keyword}でおすすめの{food_keyword}屋を教えてください。"
     recommendation = call_restaurant_tool(query)
     return recommendation
