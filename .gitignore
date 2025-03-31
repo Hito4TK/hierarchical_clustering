@@ -4,6 +4,14 @@ hierarchical_clustering.code-workspace
 old*
 test.py
 
+# AWS 認証情報を除外
+*.pem
+*.key
+*.aws
+.aws/
+credentials
+config
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
